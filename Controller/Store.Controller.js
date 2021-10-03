@@ -18,6 +18,7 @@ exports.getAllStore = asyncHandler(async (req, res, next) => {
     .select("storeid")
     .populate({
       path: "storeid",
+      options: { sort: { created_at: -1 } },
       // select: "-Rate",
       populate: {
         path: "subCategory verficationCode itemType",
@@ -27,10 +28,18 @@ exports.getAllStore = asyncHandler(async (req, res, next) => {
       //   path: "verficationCode",
       // },
     });
+  // .sort({ created_at: 1 });
 
   const store = JSON.parse(JSON.stringify(brandStore.storeid));
 
   store.forEach((element, index) => {
+    element.product.forEach((element, index1) => {
+      element.photo.forEach((element, index2) => {
+        store[index].product[index1].photo[index2] =
+          process.env.CURRENT_PATH + element;
+      });
+    });
+
     let isLikeFound = false;
     let isIWantThisFound = false;
     element.happy.forEach((e, i) => {
@@ -213,7 +222,7 @@ exports.checkStoreTest = asyncHandler(async (req, res, next) => {
       // );
 
       photoColorArray.push(
-        `${process.env.URL_PATH}/${req.user._id}/${req.params.brandid}/store/${
+        `${process.env.CLIENT}/${req.user._id}/${req.params.brandid}/store/${
           store._id
         }/${element.color.substring(1)}/${photo[Number(e)].name}`
       );

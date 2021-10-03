@@ -5,12 +5,10 @@ const BrandSchema = new mongoose.Schema({
   name_en: {
     type: String,
     required: true,
-    unique: true,
   },
   name_ar: {
     type: String,
     required: true,
-    unique: true,
   },
   date_created_company: {
     type: Date,
@@ -123,6 +121,14 @@ const BrancheSchema = new mongoose.Schema({
   },
   address: {
     type: String,
+  },
+  city: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "City",
+  },
+  street: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Street",
   },
   brand_ref: {
     type: mongoose.Schema.Types.ObjectId,

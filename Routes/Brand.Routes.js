@@ -1,7 +1,12 @@
 const express = require("express");
 
 //import autherizetion
-const { protect, authorize, protectEmployee } = require("../middleware/auth");
+const {
+  protect,
+  authorize,
+  protectEmployee,
+  authorizeEmployee,
+} = require("../middleware/auth");
 
 const {
   createBranche,
@@ -21,6 +26,8 @@ const {
 
   addUserRate,
   updateUserRate,
+
+  brandIntrested,
 } = require("../Controller/Brand.Controller");
 
 const {
@@ -28,6 +35,7 @@ const {
   setCahserForBrache,
   getCahserBranche,
   userConfirmCasherRequest,
+  getAllBrandCasher,
 } = require("../Controller/Casher.Controller");
 
 const router = express.Router();
@@ -37,7 +45,9 @@ router
   .route("/")
   .get(protect, authorize("client"), getBrand)
   .post(protect, authorize("client"), createBrand);
-router.route("/all").get(getBrands);
+router
+  .route("/all")
+  .get(protectEmployee, authorizeEmployee("admin"), getBrands);
 router.route("/search").get(searchBrand);
 router.route("/:id").get(protect, getBrandByID);
 router.route("/small/:id").get(getSmallInfo);
@@ -48,6 +58,12 @@ router
   .route("/rate/:brandId")
   .post(protect, addUserRate)
   .put(protect, updateUserRate);
+
+//-----------------------------Intrested-----------------------------
+
+router
+  .route("/intrested/:brandId")
+  .get(protect, authorize("client"), brandIntrested);
 
 //-----------------------------Branches-----------------------------
 router
@@ -64,4 +80,12 @@ router
   .get(protect, authorize("client"), getCashersBrand)
   .post(protect, authorize("client"), setCahserForBrache)
   .put(protect, userConfirmCasherRequest);
+
+// Casher
+
+//get all casher brand
+router
+  .route("/casher/:brandId")
+  .get(protect, authorize("client"), getAllBrandCasher);
+
 module.exports = router;

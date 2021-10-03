@@ -135,7 +135,6 @@ const UserSchema = new mongoose.Schema({
             "offer",
             "store",
             "gift",
-            "interestedBrand",
             "convertPoints",
             "getPoints",
             "spentPoints",
@@ -148,15 +147,15 @@ const UserSchema = new mongoose.Schema({
         photoUrl: {
           type: String,
         },
-        brandId: {
-          type: String,
-        },
-        brancheId: {
-          type: String,
-        },
-        logo: {
-          type: String,
-        },
+        // brandId: {
+        //   type: String,
+        // },
+        // brancheId: {
+        //   type: String,
+        // },
+        // logo: {
+        //   type: String,
+        // },
         isCasher: {
           type: Boolean,
         },

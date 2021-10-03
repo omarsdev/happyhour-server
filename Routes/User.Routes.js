@@ -7,6 +7,9 @@ const {
   logoutUser,
   getMe,
 
+  searchByPhoneNumber,
+  searchByUserName,
+
   updateuser,
   updateToClientAccount,
 
@@ -63,6 +66,10 @@ router.route("/me").get(protect, getMe);
 router
   .route("/updatetoclient")
   .post(protect, authorize("user"), updateToClientAccount);
+
+//serch By Phone NUmber
+router.route("/checkphonenumber").post(searchByPhoneNumber);
+router.route("/checkusername").post(searchByUserName);
 
 //intrested
 router.route("/intrested/:brandid").put(protect, setIntrested);

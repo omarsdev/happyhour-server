@@ -23,10 +23,18 @@ exports.getAllGifts = asyncHandler(async (req, res, next) => {
       select: "name_en name_ar",
     },
   });
+  // .select("brand");
+
+  let NGift = JSON.parse(JSON.stringify(gifts));
+
+  // NGift.brand;
+  NGift.forEach((element, index) => {
+    NGift[index].photo = process.env.CURRENT_PATH + element.photo;
+  });
 
   res.status(200).json({
     success: true,
-    data: gifts,
+    data: NGift,
   });
 });
 
@@ -39,6 +47,7 @@ exports.getAllGift = asyncHandler(async (req, res, next) => {
     })
     .populate({
       path: "gift",
+      options: { sort: { createdAt: -1 } },
       select: "-brand",
     });
 
@@ -51,13 +60,19 @@ exports.getAllGift = asyncHandler(async (req, res, next) => {
   brand.gift.forEach((gift) => {
     gift = JSON.parse(JSON.stringify(gift));
     gift["brand"] = {};
-    gift["brand"]["logo"] = brand.logo;
+    gift["brand"]["logo"] = process.env.CURRENT_PATH + brand.logo;
     gift["brand"]["_id"] = brand._id;
     gift["brand"]["name_en"] = brand.name_en;
     gift["brand"]["name_ar"] = brand.name_ar;
     gift["brand"]["categoryid"] = brand.categoryid;
     giftArr.push(gift);
   });
+
+  giftArr.forEach((element, index) => {
+    giftArr[index].photo = process.env.CURRENT_PATH + element.photo;
+    // console.log(element.photo);
+  });
+
   res.json({
     success: true,
     data: giftArr,
@@ -138,8 +153,8 @@ exports.createNewBrandGift = asyncHandler(async (req, res, next) => {
       console.error(err);
       return next(new ErrorResponse(`Problem with file upload`, 500));
     }
-    const newImage = `${process.env.URL_PATH}/${req.user._id}/${req.params.brandid}/gift/${gift._id}/${photo.name}`;
-    console.log(newImage);
+    const newImage = `${process.env.Client}/${req.user._id}/${req.params.brandid}/gift/${gift._id}/${photo.name}`;
+    // console.log(newImage);
     await Gift.findByIdAndUpdate(gift._id, {
       photo: newImage,
     });

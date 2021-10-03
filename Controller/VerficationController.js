@@ -19,6 +19,7 @@ const Casher = require("../model/Casher");
 
 const { sendNotification } = require("../utils/sendNotification");
 const { Client } = require("../model/Client");
+const { Branche } = require("../model/Brand");
 
 exports.createVerficationCodeGift = asyncHandler(async (req, res, next) => {
   const giftid = req.params.giftid;
@@ -28,7 +29,6 @@ exports.createVerficationCodeGift = asyncHandler(async (req, res, next) => {
     .select("verficationCode brand quantity")
     .populate("verficationCode");
 
-  // console.log(gift);
   if (gift.quantity < quantity) {
     return next(
       new ErrorResponse(
@@ -207,7 +207,7 @@ exports.createVerficationCodeStore = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Store not found with id of ${storeid}`));
   }
 
-  const user = await UserVerfication.findByIdAndUpdate(req.user.id, {
+  const user = await UserVerfication.findByIdAndUpdate({user_ref: req.user.id}, {
     $push: { store_user: creteNewVerfication._id },
   });
   if (!user) {
@@ -232,7 +232,7 @@ exports.createVerficationCodeStore = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    data: creteNewVerfication,
+    data: creteNewVerfication.code,
   });
 });
 function getRandomCodeStore() {
@@ -327,9 +327,30 @@ function getRandomStringADS(length) {
 
 exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
   const str = req.body.code;
-  const brnadId = req.params.brnadId;
+  const brancheId = req.params.brancheId;
   var user_id;
-  // console.log(req.body);
+
+  //chek branche Id
+  const branche = await Branche.findById(brancheId).populate({
+    path: "brand_ref",
+    select: "clientid",
+  });
+
+  const brand_id = branche.brand_ref._id;
+
+  let find = false;
+  branche.casher.forEach((element, index) => {
+    if (element.toString() === req.user._id.toString()) {
+      find = true;
+    }
+  });
+
+  if (
+    branche.brand_ref.clientid.toString() !== req.user._id.toString() &&
+    !find
+  ) {
+    return next(new ErrorResponse("Unautherization to access this route"));
+  }
 
   //check type of code
   var x;
@@ -345,10 +366,10 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
   }
 
   var f = false;
-  if (chars == 0 && nums != 0) {
+  if (nums === 6) {
     type = "offer";
     x = await VerficationAds.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -357,7 +378,8 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
       })
       .populate({
         path: "user_ref",
-        select: "notificationToken username email gender photo",
+        select:
+          "notificationToken username email gender photo first_name last_name photo",
       });
     // console.log(x);
     if (x) {
@@ -369,11 +391,10 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
     if (x.expire) {
       return next(new ErrorResponse(`Code is already Expire`, 400));
     }
-  }
-  if (chars != 0 && nums == 0) {
+  } else if (chars === 6) {
     type = "gift";
     x = await VerficationGift.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -382,7 +403,8 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
       })
       .populate({
         path: "user_ref",
-        select: "notificationToken username email gender photo",
+        select:
+          "notificationToken username email gender photo first_name last_name photo",
       });
     // console.log("gift");
     if (x) {
@@ -394,11 +416,10 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
     if (x.expire) {
       return next(new ErrorResponse(`Code is already Expire`, 400));
     }
-  }
-  if (chars != 0 && nums != 0) {
+  } else if (chars === nums) {
     type = "store";
     x = await VerficationStore.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -407,7 +428,8 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
       })
       .populate({
         path: "user_ref",
-        select: "notificationToken username email gender photo",
+        select:
+          "notificationToken username email gender photo first_name last_name photo",
       });
     // console.log("store");
     if (x) {
@@ -434,11 +456,33 @@ exports.checkVerficationCode = asyncHandler(async (req, res, next) => {
   }
 });
 
-exports.checkCode = asyncHandler(async (req, res, next) => {
+exports.comfirmVerficationCode = asyncHandler(async (req, res, next) => {
   //check code if ads or store or gift
   const str = req.body.code;
-  const brnadId = req.params.brnadId;
-  var user_id;
+  const brancheId = req.params.brancheId;
+  let user_id;
+
+  //chek branche Id
+  const branche = await Branche.findById(brancheId).populate({
+    path: "brand_ref",
+    select: "clientid",
+  });
+
+  const brand_id = branche.brand_ref._id;
+
+  let find = false;
+  branche.casher.forEach((element, index) => {
+    if (element.toString() === req.user._id.toString()) {
+      find = true;
+    }
+  });
+
+  if (
+    branche.brand_ref.clientid.toString() !== req.user._id.toString() &&
+    !find
+  ) {
+    return next(new ErrorResponse("Unautherization to access this route"));
+  }
 
   //check type of code
   var x;
@@ -454,10 +498,10 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
   }
 
   var f = false;
-  if (chars == 0 && nums != 0) {
+  if (nums === 6) {
     type = "offer";
     x = await VerficationAds.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -468,19 +512,18 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         path: "user_ref",
         select: "notificationToken",
       });
-    console.log(x);
+    // console.log(x);
     if (x) {
       f = true;
-      user_id = x.user_id;
+      user_id = x.user_ref._id;
     }
     if (x.expire) {
       return next(new ErrorResponse(`Code is already Expire`, 400));
     }
-  }
-  if (chars != 0 && nums == 0) {
+  } else if (chars === 6) {
     type = "gift";
     x = await VerficationGift.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -491,19 +534,17 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         path: "user_ref",
         select: "notificationToken",
       });
-    // console.log("gift");
     if (x) {
       f = true;
-      user_id = x.user_id;
+      user_id = x.user_ref._id;
     }
     if (x.expire) {
       return next(new ErrorResponse(`Code is already Expire`, 400));
     }
-  }
-  if (chars != 0 && nums != 0) {
+  } else if (chars === nums) {
     type = "store";
     x = await VerficationStore.findOne({
-      brand_id: req.body.brand_id,
+      brand_ref: brand_id,
       code: str,
     })
       .populate({
@@ -517,7 +558,7 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
     // console.log("store");
     if (x) {
       f = true;
-      user_id = x.user_id;
+      user_id = x.user_ref._id;
     }
     if (x.expire) {
       return next(new ErrorResponse(`Code is already Expire`, 400));
@@ -534,15 +575,30 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
     if (type === "gift") {
       const ub = await UBPoints.findOne({
         user_id: user_id,
-        brand_id: brnadId,
+        brand_id: brand_id,
       });
       //if User Dont Have Account in User Brnad Points
       if (!ub) {
         res.json({
-          success: true,
+          success: false,
           msg: "the User dones not has any points in his account",
         });
+        return;
       }
+
+      //check the quantity
+
+      const giftBrand = await Gift.findById(x.gift_ref);
+
+      const userQuantityGift = x.quantity;
+      if (giftBrand.quantity - x.quantity < 0) {
+        res.json({
+          success: false,
+          msg: `user quantity is ${x.quantity} and gifts in store is ${giftBrand.quantity}`,
+        });
+        return;
+      }
+
       //if User Has a Account in User Brand Poinst
       //gt gift price
       const priceGift =
@@ -552,6 +608,11 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
       if (userPriceOwnerGift < priceGift) {
         return next(new ErrorResponse(`User Has Less Points Than Gift Price`));
       } else {
+        //update gift Quantity
+        await Gift.findByIdAndUpdate(x.gift_ref, {
+          quantity: giftBrand.quantity - x.quantity,
+        });
+
         const result = userPriceOwnerGift - priceGift;
         const newUserGiftCards = result / 100;
         const newUserGiftPoints = result % 100;
@@ -589,9 +650,16 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
           });
         }
 
+        const notificationToken = [];
+        x.user_ref.notificationToken.forEach((element) => {
+          if (element) {
+            notificationToken.push(element);
+          }
+        });
+
         //send notification that the gift has benn verfiyed
         await sendNotification(
-          x.user_ref.notificationToken,
+          notificationToken,
           "Gift Verfiyed",
           "You Have Benn Confirm Your Verfication Code",
           x.gift_ref.photo
@@ -599,14 +667,13 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         res.json({
           success: true,
         });
-        //TODO check quantity for user
       }
     }
     //if Type is Ads or Store
     else if (type === "offer") {
       const ub = await UBPoints.findOne({
         user_id: user_id,
-        brand_id: brnadId,
+        brand_id: brand_id,
       });
       const priceOffer =
         Number(x.ads_ref.price_on_card) * 100 +
@@ -621,7 +688,7 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         // console.log("ONEEEEEEEEEEE");
         await UBPoints.create({
           user_id: user_id,
-          brand_id: brnadId,
+          brand_id: brand_id,
           points: Number(x.ads_ref.price_in_points),
           cards: Number(x.ads_ref.price_on_card),
           logs: [{ desc: "You Have Benn Buy New product from Offer Service" }],
@@ -635,8 +702,8 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         const userBrandsCards = resultPointsUserBrnad / 100;
         const userBrandsPoints = resultPointsUserBrnad % 100;
         await UBPoints.findByIdAndUpdate(ub._id, {
-          points: userBrandsPoints,
-          cards: userBrandsCards,
+          points: Number(x.ads_ref.price_in_points) + Number(ub.points),
+          cards: Number(x.ads_ref.price_on_card) + Number(ub.cards),
           $push: {
             logs: { desc: "You Have Benn Buy New product from Offer Service" },
           },
@@ -667,9 +734,15 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         });
       }
 
+      const notificationToken = [];
+      x.user_ref.notificationToken.forEach((element) => {
+        if (element) {
+          notificationToken.push(element);
+        }
+      });
       //send notification that the gift has benn verfiyed
       await sendNotification(
-        x.user_ref.notificationToken,
+        notificationToken,
         "Ads Verfiyed",
         "You Have Benn Confirm Your Verfication Code",
         x.ads_ref.photo[0]
@@ -683,7 +756,7 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
     else if (type === "store") {
       const ub = await UBPoints.findOne({
         user_id: user_id,
-        brand_id: brnadId,
+        brand_id: brand_id,
       });
       const priceOffer =
         Number(x.store_ref.priceInCard) * 100 +
@@ -692,7 +765,7 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
       if (!ub) {
         await UBPoints.create({
           user_id: user_id,
-          brand_id: brnadId,
+          brand_id: brand_id,
           points: Number(x.store_ref.priceInPoints),
           cards: Number(x.store_ref.priceInCard),
           logs: [{ desc: "You Have Benn Buy New product from Offer Service" }],
@@ -706,8 +779,8 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         const userBrandsCards = resultPointsUserBrnad / 100;
         const userBrandsPoints = resultPointsUserBrnad % 100;
         await UBPoints.findByIdAndUpdate(ub._id, {
-          points: userBrandsPoints,
-          cards: userBrandsCards,
+          points: Number(ub.points) + Number(x.store_ref.priceInPoints),
+          cards: Number(ub.cards) + Number(x.store_ref.priceInCard),
           $push: {
             logs: { desc: "You Have Benn Buy New product from Offer Service" },
           },
@@ -738,9 +811,16 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
         });
       }
 
+      const notificationToken = [];
+      x.user_ref.notificationToken.forEach((element) => {
+        if (element) {
+          notificationToken.push(element);
+        }
+      });
+
       //send notification that the gift has benn verfiyed
       await sendNotification(
-        x.user_ref.notificationToken,
+        notificationToken,
         "Ads Verfiyed",
         "You Have Benn Confirm Your Verfication Code",
         x.store_ref.product[0].photo[0]
@@ -756,3 +836,49 @@ exports.checkCode = asyncHandler(async (req, res, next) => {
 function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
+
+///get User Verfication Gift
+exports.getUserVerficationGift = asyncHandler(async (req, res, next) => {
+  const user = await VerficationGift.find({ user_ref: req.user._id })
+    .populate({
+      path: "gift_ref",
+      select: "photo price_in_points price_on_card",
+    })
+    .populate({
+      path: "brand_ref",
+      select: "logo name_en name_ar",
+    });
+
+  var lengthUsedGift = 0;
+  var lengthNotUsedGift = 0;
+
+  // let nUser = user;
+  let nUser = JSON.parse(JSON.stringify(user));
+
+  nUser.forEach((element, index) => {
+    if (element.expire) {
+      lengthUsedGift += 1;
+    } else {
+      lengthNotUsedGift += 1;
+    }
+    // element.gift_ref.forEach((element, index1) => {
+    //   nUser[index].gift_ref[index1] = process.env.CURRENT_PATH + element.photo;
+    // });
+    nUser[index].gift_ref.photo =
+      process.env.CURRENT_PATH + element.gift_ref.photo;
+    // console.log(element.gift_ref.photo);
+  });
+
+  // console.log(nUser);
+
+  // console.log(nData);
+  // nData = JSON.stringify(nData);
+  // nData = JSON.parse(nData);
+
+  res.json({
+    success: true,
+    data: nUser,
+    used_gift: lengthUsedGift,
+    not_used_gift: lengthNotUsedGift,
+  });
+});

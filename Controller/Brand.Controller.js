@@ -6,6 +6,8 @@ const { Brand, Branche } = require("../model/Brand");
 const { Client } = require("../model/Client");
 const { Category } = require("../model/Category");
 
+const moment = require("moment");
+
 //-----------------------------Brand-----------------------------
 
 exports.createBrand = asyncHandler(async (req, res, next) => {
@@ -100,11 +102,23 @@ exports.getBrand = asyncHandler(async (req, res, next) => {
       new ErrorResponse(`Brand not found with id of ${req.params.id}`, 404)
     );
   }
+  let NBrand = brand.brand;
+  NBrand = JSON.stringify(NBrand);
+  NBrand = JSON.parse(NBrand);
+
+  NBrand.forEach((element) => {
+    if (element.logo !== "no-photo.jpg") {
+      element.logo = process.env.CURRENT_PATH + element.logo;
+    }
+    if (element.cover !== "no-photo.jpg") {
+      element.cover = process.env.CURRENT_PATH + element.cover;
+    }
+  });
 
   res.status(200).json({
     success: true,
-    count: brand.brand.length,
-    data: brand.brand,
+    count: NBrand.length,
+    data: NBrand,
   });
 });
 
@@ -114,13 +128,25 @@ exports.getBrandByID = asyncHandler(async (req, res, next) => {
     select: "name_en name_ar parentId hasSize",
   });
 
-  console.log(brand.Rate);
+  // console.log(brand.Rate);
   let findUserRate = false;
   let findUserIndex = null;
   let userRate = null;
   let userComment = null;
+  let allRateCounter = [0, 0, 0, 0, 0];
 
   brand.Rate.forEach((element, index) => {
+    if (element.rate === 1) {
+      allRateCounter[0] = allRateCounter[0] + 1;
+    } else if (element.rate === 2) {
+      allRateCounter[1] = allRateCounter[1] + 1;
+    } else if (element.rate === 3) {
+      allRateCounter[2] = allRateCounter[2] + 1;
+    } else if (element.rate === 4) {
+      allRateCounter[3] = allRateCounter[3] + 1;
+    } else if (element.rate === 5) {
+      allRateCounter[4] = allRateCounter[4] + 1;
+    }
     if (req.user._id.toString() === element.user_ref.toString()) {
       findUserRate = true;
       findUserIndex = index;
@@ -141,6 +167,18 @@ exports.getBrandByID = asyncHandler(async (req, res, next) => {
   let NBrand = brand;
   NBrand = JSON.stringify(NBrand);
   NBrand = JSON.parse(NBrand);
+
+  //if there is photo
+  if (NBrand.logo !== "no-photo.jpg") {
+    NBrand.logo = process.env.CURRENT_PATH + NBrand.logo;
+  }
+
+  if (NBrand.cover !== "no-photo.jpg") {
+    NBrand.cover = process.env.CURRENT_PATH + NBrand.cover;
+  }
+
+  NBrand["allRateCounter"] = allRateCounter;
+  NBrand["RateLength"] = brand.Rate.length;
 
   if (findUserRate) {
     NBrand["userRate"] = userRate;
@@ -238,7 +276,7 @@ exports.uploadCoverPhoto = asyncHandler(async (req, res, next) => {
   }
 
   // Create custom filename
-  file.name = `cover_${brand._id}${path.parse(file.name).ext}`;
+  file.name = `cover_${brand._id}_${Date.now()}${path.parse(file.name).ext}`;
 
   file.mv(
     `${process.env.FILE_UPLOAD_PATH_CLIENT}/${brand.clientid}/${brand._id}/profile/${file.name}`,
@@ -249,7 +287,7 @@ exports.uploadCoverPhoto = asyncHandler(async (req, res, next) => {
       }
 
       await Brand.findByIdAndUpdate(req.params.id, {
-        cover: `${process.env.URL_PATH}/${brand.clientid}/${brand._id}/profile/${file.name}`,
+        cover: `${process.env.CLIENT}/${brand.clientid}/${brand._id}/profile/${file.name}`,
       });
 
       res.status(200).json({
@@ -309,7 +347,6 @@ exports.uploadLogoPhoto = asyncHandler(async (req, res, next) => {
     );
   }
 
-  console.log(req.body);
   if (!req.files) {
     return next(new ErrorResponse(`Please upload a file`, 400));
   }
@@ -332,7 +369,7 @@ exports.uploadLogoPhoto = asyncHandler(async (req, res, next) => {
   }
 
   // Create custom filename
-  file.name = `logo_${brand._id}${path.parse(file.name).ext}`;
+  file.name = `logo_${brand._id}_${Date.now()}${path.parse(file.name).ext}`;
 
   file.mv(
     `${process.env.FILE_UPLOAD_PATH_CLIENT}/${brand.clientid}/${brand._id}/profile/${file.name}`,
@@ -343,7 +380,7 @@ exports.uploadLogoPhoto = asyncHandler(async (req, res, next) => {
       }
 
       await Brand.findByIdAndUpdate(req.params.id, {
-        logo: `${process.env.URL_PATH}/${brand.clientid}/${brand._id}/profile/${file.name}`,
+        logo: `${process.env.CLIENT}/${brand.clientid}/${brand._id}/profile/${file.name}`,
       });
 
       res.status(200).json({
@@ -377,7 +414,7 @@ exports.addUserRate = asyncHandler(async (req, res, next) => {
   const brandId = req.params.brandId;
   const { rate, comment } = req.body;
 
-  if (rate < 0 || rate > 5) {
+  if (rate <= 0 || rate > 5) {
     return next(
       new ErrorResponse(`Your rate must be between 0 and 5 only`, 400)
     );
@@ -492,12 +529,14 @@ exports.createBranche = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const { name_en, name_ar, address, telephone_number } = req.body;
+  const { name_en, name_ar, address, telephone_number, city, street } =
+    req.body;
 
   const branche = await Branche.create({
     name_en,
     name_ar,
-    address,
+    city,
+    street,
     brand_ref: req.params.brandid,
     telephone_number,
   });
@@ -591,5 +630,81 @@ exports.updateBranches = asyncHandler(async (req, res, next) => {
   }
   res.status(200).json({
     success: true,
+  });
+});
+
+// Intrested
+exports.brandIntrested = asyncHandler(async (req, res, next) => {
+  const brand = await Brand.findById(req.params.brandId)
+    .where("clientid")
+    .in(req.user._id)
+    .populate({
+      path: "interestedUser",
+      select: "gender birthday",
+    })
+    .select("interestedUser");
+
+  if (!brand) {
+    return next(new ErrorResponse("Not Autherize to Access this route", 401));
+  }
+
+  let NBrand = brand;
+  NBrand = JSON.stringify(NBrand);
+  NBrand = JSON.parse(NBrand);
+
+  let maleCount = 0;
+  let femaleCount = 0;
+
+  let male18And30 = 0;
+  let male31And50 = 0;
+  let maleAbove50 = 0;
+
+  let female18And30 = 0;
+  let female31And50 = 0;
+  let femaleAbove50 = 0;
+
+  const intrestedCount = NBrand.interestedUser.length;
+
+  NBrand.interestedUser.forEach((element) => {
+    if (element.gender === "Male") {
+      maleCount++;
+    } else {
+      femaleCount++;
+    }
+    var years = moment().diff(element.birthday, "years");
+    if (years > 18 && years <= 30 && element.gender === "Male") {
+      male18And30++;
+    } else if (years > 18 && years <= 30 && element.gender === "Female") {
+      female18And30++;
+    } else if (years > 31 && years <= 50 && element.gender === "Male") {
+      male31And50++;
+    } else if (years > 31 && years <= 50 && element.gender === "Female") {
+      female31And50++;
+    } else if (years > 50 && element.gender === "Male") {
+      maleAbove50++;
+    } else if (years > 50 && element.gender === "Female") {
+      femaleAbove50++;
+    }
+    element["age"] = years;
+  });
+
+  delete NBrand.interestedUser;
+
+  NBrand["maleCount"] = maleCount;
+  NBrand["femaleCount"] = femaleCount;
+
+  NBrand["male18And30"] = male18And30;
+  NBrand["male31And50"] = male31And50;
+  NBrand["maleAbove50"] = maleAbove50;
+
+  NBrand["female18And30"] = female18And30;
+  NBrand["female31And50"] = female31And50;
+  NBrand["femaleAbove50"] = femaleAbove50;
+
+  NBrand["intrestedCount"] = intrestedCount;
+
+  res.json({
+    success: true,
+    data: NBrand,
   });
 });

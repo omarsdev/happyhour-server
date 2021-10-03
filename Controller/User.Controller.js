@@ -38,6 +38,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     gender,
     material_status,
     date_marriage,
+    notificationToken,
   } = req.body;
 
   if (material_status !== "Single" && date_marriage === "") {
@@ -102,30 +103,14 @@ exports.uploadUserImage = asyncHandler(async (req, res, next) => {
   }
 
   // Create custom filename
-  file.name = `photo_${req.user.username}-${req.user._id}${
-    path.parse(file.name).ext
-  }`;
+  file.name = `photo_${req.user._id}-${Date.now()}${path.parse(file.name).ext}`;
 
   sharp(file.data)
     .jpeg({ quality: 20 })
     .toFile(`${process.env.FILE_UPLOAD_PATH_USER}/${file.name}`);
 
-  // file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async err => {
-  //   if (err) {
-  //     console.error(err);
-  //     return next(new ErrorResponse(`Problem with file upload`, 500));
-  //   }
-
-  //   await Bootcamp.findByIdAndUpdate(req.params.id, { photo: file.name });
-
-  //   res.status(200).json({
-  //     success: true,
-  //     data: file.name
-  //   });
-  // });
-
   await User.findByIdAndUpdate(req.user._id, {
-    photo: `${process.env.URL_PATH_USER}/${file.name}`,
+    photo: `User/${file.name}`,
   });
 
   res.status(200).json({
@@ -200,7 +185,7 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   }
 
   //Check For User
-  const user = await User.findOneAndUpdate(
+  let user = await User.findOneAndUpdate(
     { phone_number },
     {
       $addToSet: {
@@ -219,6 +204,17 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   if (!isMatch) {
     return next(new ErrorResponse("Invalid credentials", 401));
   }
+
+  // let Nuser = user;
+  // Nuser = JSON.stringify(Nuser);
+  // Nuser = JSON.parse(Nuser);
+  // if (Nuser.photo) {
+  //   Nuser.photo = process.env.CURRENT_PATH + Nuser.photo;
+  // }
+
+  // // console.log(Nuser);
+  // user = Nuser;
+
   sendTokenResponse(user, 200, res);
 });
 
@@ -244,6 +240,9 @@ exports.getMe = asyncHandler(async (req, res, next) => {
   let Nuser = user;
   Nuser = JSON.stringify(Nuser);
   Nuser = JSON.parse(Nuser);
+  if (Nuser.photo) {
+    Nuser.photo = process.env.CURRENT_PATH + Nuser.photo;
+  }
   if (user.role === "client") {
     const client = await Client.findById(req.user._id).populate({
       path: "brand",
@@ -255,6 +254,13 @@ exports.getMe = asyncHandler(async (req, res, next) => {
     });
 
     Nuser["brand"] = client.brand;
+
+    Nuser.brand.forEach((element) => {
+      if (element.logo !== "no-photo.jpg") {
+        element.logo = process.env.CURRENT_PATH + element.logo;
+      }
+    });
+
     delete Nuser.verficationCode;
     res.status(200).json({
       sucess: true,
@@ -271,6 +277,36 @@ exports.getMe = asyncHandler(async (req, res, next) => {
     res.status(200).json({
       sucess: true,
       data: user,
+    });
+  }
+});
+
+//check if User Phone NUmber exists for name
+exports.searchByPhoneNumber = asyncHandler(async (req, res, next) => {
+  const { phone_number } = req.body;
+  const user = await User.findOne({ phone_number: phone_number });
+
+  if (user) {
+    res.status(200).json({
+      success: true,
+    });
+  } else {
+    res.status(200).json({
+      success: false,
+    });
+  }
+});
+exports.searchByUserName = asyncHandler(async (req, res, next) => {
+  const { username } = req.body;
+  const user = await User.findOne({ username: username });
+
+  if (user) {
+    res.status(200).json({
+      success: true,
+    });
+  } else {
+    res.status(200).json({
+      success: false,
     });
   }
 });
@@ -533,6 +569,7 @@ exports.createVerficationCode = asyncHandler(async (req, res, next) => {
 //Get Token From Module , Create Cookie and send Response
 const sendTokenResponse = (user, statusCode, res) => {
   //Create Token
+
   const token = user.getSignedJwtToken();
 
   const options = {
@@ -671,9 +708,16 @@ exports.getBrandSearch = asyncHandler(async (req, res, next) => {
       },
     });
 
+  let NBrand = JSON.parse(JSON.stringify(brand));
+
+  // console.log();
+  NBrand.historySearch.forEach((element, index) => {
+    NBrand.historySearch[index].logo = process.env.CURRENT_PATH + element.logo;
+  });
+
   res.status(200).json({
     success: true,
-    data: brand,
+    data: NBrand,
   });
 });
 

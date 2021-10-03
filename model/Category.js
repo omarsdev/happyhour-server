@@ -29,6 +29,12 @@ const CategorySchema = new mongoose.Schema({
       type: String,
     },
   ],
+  intrestedUser: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   // offer_types_role: {
   //   type: String,
   //   enum: ["store", "custom", "store_or_custom"],

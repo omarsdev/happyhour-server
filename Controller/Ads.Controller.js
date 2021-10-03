@@ -19,7 +19,7 @@ exports.getAllAds = asyncHandler(async (req, res, next) => {
     .sort("created_at")
     .populate({
       path: "brand",
-      select: "name_en name_ar logo clientid categoryid",
+      select: "name_en name_ar logo clientid categoryid rateAvg",
       populate: {
         path: "categoryid",
         select: "name_en name_ar",
@@ -29,7 +29,14 @@ exports.getAllAds = asyncHandler(async (req, res, next) => {
   let NAds = ads;
   NAds = JSON.stringify(NAds);
   NAds = JSON.parse(NAds);
+
   for (let i = 0; i < NAds.length; i++) {
+    NAds[i].photo.forEach((element, index) => {
+      NAds[i].photo[index] = process.env.CURRENT_PATH + element;
+    });
+    if (NAds[i].brand.logo !== "no-photo.jpg") {
+      NAds[i].brand.logo = process.env.CURRENT_PATH + NAds[i].brand.logo;
+    }
     NAds[i]["happyCount"] = NAds[i].happy.length;
     NAds[i]["adsViews"] = NAds[i].views.length;
     for (let j = 0; j < NAds[i].happy.length; j++) {
@@ -37,12 +44,19 @@ exports.getAllAds = asyncHandler(async (req, res, next) => {
         NAds[i]["isHappy"] = true;
         break;
       }
+      if (NAds[i].brand.logo !== "no-photo.jpg") {
+        NAds[i].brand.logo = process.env.CURRENT_PATH + NAds[i].brand.logo;
+      }
+      if (NAds[i].brand.cover !== "no-photo.jpg") {
+        NAds[i].brand.cover = process.env.CURRENT_PATH + NAds[i].brand.cover;
+      }
     }
     var BreakException = {};
     try {
       NAds[i].verficationCode.forEach((element1) => {
         if (element1.user_ref.toString() === req.user.id.toString()) {
           NAds[i]["userCode"] = element1.code;
+          NAds[i]["userCodeExpire"] = element1.expire;
           throw BreakException;
         }
       });
@@ -68,7 +82,7 @@ exports.getAds = asyncHandler(async (req, res, next) => {
     populate: {
       path: "brand verficationCode",
       select:
-        "name_en name_ar logo clientid categoryid expire code ads_ref user_ref",
+        "name_en name_ar logo clientid categoryid expire code ads_ref user_ref rateAvg",
       populate: {
         path: "categoryid",
         select: "name_en name_ar",
@@ -87,8 +101,15 @@ exports.getAds = asyncHandler(async (req, res, next) => {
   NAds = JSON.stringify(NAds);
   NAds = JSON.parse(NAds);
   for (let i = 0; i < NAds.length; i++) {
+    NAds[i].photo.forEach((element, index) => {
+      NAds[i].photo[index] = process.env.CURRENT_PATH + element;
+    });
+
     NAds[i]["happyCount"] = NAds[i].happy.length;
     NAds[i]["adsViews"] = NAds[i].views.length;
+    if (NAds[i].brand.logo !== "no-photo.jpg") {
+      NAds[i].brand.logo = process.env.CURRENT_PATH + NAds[i].brand.logo;
+    }
     for (let j = 0; j < NAds[i].happy.length; j++) {
       if (NAds[i].happy[j].toString() === req.user.id.toString()) {
         NAds[i]["isHappy"] = true;
@@ -135,7 +156,7 @@ exports.createAds = asyncHandler(async (req, res, next) => {
   const description = JSON.parse(req.body.description);
   const discount = JSON.parse(req.body.discount);
 
-  console.log(req.files);
+  // console.log(req.files);
 
   var adsPhoto = req.files.photo;
   if (!adsPhoto.length) {
@@ -212,7 +233,7 @@ exports.createAds = asyncHandler(async (req, res, next) => {
         return next(new ErrorResponse(`Problem with file upload`, 500));
       }
 
-      const newImage = `${process.env.URL_PATH}/${req.user._id}/${req.params.brandid}/ads/${adsController._id}/${adsPhoto[i].name}`;
+      const newImage = `${process.env.CLIENT}/${req.user._id}/${req.params.brandid}/ads/${adsController._id}/${adsPhoto[i].name}`;
 
       await Ads.findByIdAndUpdate(adsController._id, {
         $push: {
@@ -420,7 +441,7 @@ exports.uploadPhotoTest = asyncHandler(async (req, res, next) => {
   const start_time = req.body.start_time;
 
   // console.log(descriptionArr, "\n", DiscountArr);
-  console.log(new Date(req.body.start_time));
+  // console.log(new Date(req.body.start_time));
 
   // descriptionArr.forEach((element) => {
   //   console.log("first", element);

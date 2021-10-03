@@ -19,7 +19,7 @@ const StoreRateSchema = new mongoose.Schema({
 
 //Call Average After Save
 StoreRateSchema.statics.getAverageRate = async function (storeId) {
-  console.log("Caculating avg Cost ...".blue);
+  // console.log("Caculating avg Cost ...".blue);
 
   const obj = await this.aggregate([
     {
@@ -33,7 +33,7 @@ StoreRateSchema.statics.getAverageRate = async function (storeId) {
     },
   ]);
 
-  console.log(obj);
+  // console.log(obj);
 };
 
 //cal averrate before save

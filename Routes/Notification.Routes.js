@@ -10,7 +10,7 @@ const { sendNotification } = require("../utils/sendNotification");
 // admin.initializeApp({
 //   credential: admin.credential.cert(serviceAccount),
 // });
-let tokens = [];
+let tokens = [,];
 // console.log(tokens);
 // router.post("/post", (req, res) => {
 //   tokens.push(req.body.token);
@@ -27,12 +27,25 @@ let tokens = [];
 router.route("/notifications").post(async (req, res) => {
   try {
     const { title, body, imageUrl } = req.body;
-    const user = await User.findOne({ phone_number: "0958744947" }).select(
-      "notificationToken"
-    );
-    tokens.push(user.notificationToken[0]);
+    // const user = await User.findOne({ phone_number: "0958744947" }).select(
+    //   "notificationToken"
+    // );
+    // // tokens.push(user.notificationToken[0]);
+
+    // user.notificationToken.forEach((element) => {
+    //   if (element) {
+    //     tokens.push(element);
+    //   }
+    // });
     // console.log(tokens);
-    const isSend = await sendNotification(tokens, title, body, imageUrl);
+    const isSend = await sendNotification(
+      [
+        "c3P84stcSgCGO0NcxdQ18Q:APA91bEYhTV_wecqy7CddD6HAJUiuyT9QNq__DJeBYcPOzeq9lebnROEtFLe_BxiqXvluc6Cd-drYFPeSP-4dd-c89wNclaOPC-TA3uoKjz4dDU0tlU2ONbJLlwCaYfBmywAh5_wBqEe",
+      ],
+      title,
+      body,
+      imageUrl
+    );
     if (isSend) {
       res.json({
         success: true,
