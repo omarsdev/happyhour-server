@@ -12,7 +12,7 @@ const connectDB = require("./config/db");
 const errorHandler = require("./middleware/error");
 const { getAds } = require("./middleware/getAds");
 // getAds();
-// Load env vars
+// Load env vars.
 dotenv.config({ path: "./config/config.env" });
 
 // Connect to database
